@@ -13,6 +13,7 @@
 #include "Carla/Util/RayTracer.h"
 #include "Carla/Vehicle/CarlaWheeledVehicle.h"
 #include "Carla/Walker/WalkerController.h"
+#include "Carla/Walker/WalkerBase.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Carla/Game/Tagger.h"
 
@@ -369,7 +370,7 @@ void FCarlaServer::FPimpl::BindActions()
     return MakeVectorFromTArray<cg::BoundingBox>(Result);
   };
 
-  BIND_SYNC(get_environment_objects) << [this]() -> R<std::vector<cr::EnvironmentObject>>
+  BIND_SYNC(get_environment_objects) << [this](uint8 QueriedTag) -> R<std::vector<cr::EnvironmentObject>>
   {
     REQUIRE_CARLA_EPISODE();
     ACarlaGameModeBase* GameMode = UCarlaStatics::GetGameMode(Episode->GetWorld());
@@ -377,7 +378,7 @@ void FCarlaServer::FPimpl::BindActions()
     {
       RESPOND_ERROR("unable to find CARLA game mode");
     }
-    TArray<FEnvironmentObject> Result = GameMode->GetEnvironmentObjects();
+    TArray<FEnvironmentObject> Result = GameMode->GetEnvironmentObjects(QueriedTag);
     return MakeVectorFromTArray<cr::EnvironmentObject>(Result);
   };
 
@@ -553,6 +554,12 @@ void FCarlaServer::FPimpl::BindActions()
     if (!ActorView.IsValid())
     {
       RESPOND_ERROR("unable to set walker state: actor not found");
+    }
+
+    auto * Walker = Cast<AWalkerBase>(ActorView.GetActor());
+    if (Walker && !Walker->bAlive)
+    {
+      RESPOND_ERROR("unable to set actor state: walker is dead");
     }
 
     // apply walker transform
